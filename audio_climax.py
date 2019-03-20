@@ -6,24 +6,71 @@ Created on 2019/3/15 11:09
 """
 
 import numpy as np
-import os,soundfile,librosa
+import os,soundfile,librosa,wave
 import matplotlib.pylab as plt
 
 # parameter config
 DIR_PATH = 'E:/Low_frequency_wav/'
+SAVE_PATH = 'E:/'
 
 def read_dir(dir = DIR_PATH):
     count = 0
     for root, dirs, files in os.walk(dir):
         for file in files:
             file_path = dir + str(file)
-            print(file_path)
-            audio, fs = read_audio(file_path)
+            audio, fs1 = read_audio(file_path)
             audio = silence_detection(audio)
-            times = determine_audio(audio,fs)
+            save_head = file[:-4]
+            print(save_head)
+            times = determine_audio(audio,fs1)
             if len(times) > 0:
-                count += 1
-    print(count/671,"count")
+                id_end = 0
+                channel, bit, fs, nsamples, data = read_wave(file_path)
+                for i in range(len(times)):
+                    start, end = times[i]
+                    data_temp = data[fs*2*start:fs*2*end]
+                    file_names = SAVE_PATH+save_head+str(i)+'.wav'
+                    save_audio(data_temp,file_names,bit=2,fs=fs,channel=channel)
+                # plt.plot(data)
+                # plt.show()
+                # print("times ",len(data)/fs)
+                # count += 1
+    # print(count/671,"count")
+
+def save_audio(sig,file_name,bit,fs,channel):
+
+    save_fp = wave.open(file_name, 'wb')
+    save_fp.setparams((channel, bit, int(fs), len(sig),'NONE', 'not compressed'))
+
+    if bit==2:
+        data = np.int16(sig)
+    if bit==4:
+        data = np.int32(sig)
+
+    data = data.tostring()
+    save_fp.writeframes(data)
+    save_fp.close
+
+def quantization_type(bit):
+
+    data_type=np.short
+    if (bit==1):
+        data_type=np.int8
+    elif (bit==2):
+        data_type=np.short
+    elif (bit==4):
+        data_type=np.int
+    return data_type
+
+def read_wave(path):
+    fp = wave.open(path, 'r')
+    params = fp.getparams()
+    channel, bit,fs, nsamples = params[:4]
+    type = quantization_type(bit)
+    str_data  = fp.readframes(nsamples)
+    data = np.frombuffer(str_data,type)
+    fp.close()
+    return channel, bit, fs, nsamples, data
 
 def read_audio(path, target_fs=None):
     """read audio"""
