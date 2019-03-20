@@ -20,8 +20,8 @@ def read_dir(dir = DIR_PATH):
             print(file_path)
             audio, fs = read_audio(file_path)
             audio = silence_detection(audio)
-            corr_max,max_id1,max_id2 = determine_audio(audio,fs)
-            if corr_max>0.6:
+            times = determine_audio(audio,fs)
+            if len(times) > 0:
                 count += 1
     print(count/671,"count")
 
@@ -46,7 +46,7 @@ def silence_detection(data):
     return data[start:]
 
 def determine_audio(data,fs):
-    length = fs*10
+    length = fs*1
     N = int(len(data)/length)
     data_N = np.zeros((N,length))
     start = 0
@@ -59,23 +59,50 @@ def determine_audio(data,fs):
     corr_N = np.corrcoef(data_N)
     corr_N_max = 0
     corr_N_max_id = [0,0]
-    data_n = np.ones(corr_N.shape)
+    data_n = np.zeros(corr_N.shape)
+    flag = np.zeros(N)
+
     for i in range(N-1):
         for j in range(i+1,N):
             if corr_N[i][j] > corr_N_max:
                 corr_N_max = corr_N[i][j]
                 corr_N_max_id = [i+1,j+1]
-            data_n[i][j] = corr_N[i][j]
+            if corr_N[i][j] > 0.8:
+                data_n[i][j] = corr_N[i][j]
+                flag[j] = 5
 
-    time1 = divmod(corr_N_max_id[0]*10,60)
-    time2 = divmod(corr_N_max_id[1]*10,60)
-    print("start times:",time1,time2)
-    print("corr max and id",corr_N_max,corr_N_max_id)
-    print(corr_N.shape)
-    plt.imshow(data_n)
-    plt.colorbar()
-    plt.show()
-    return corr_N_max,corr_N_max_id[0]-1,corr_N_max_id[1]-1
+    # If you're greater than 0 on both sides, you take the middle out
+    for i in range(1,len(flag)-1):
+        if flag[i-1] > 0 and flag[i+1] > 0:
+            flag[i] = flag[i-1]
+
+    # Let's get rid of the 0's on both sides
+    for i in range(1,len(flag)-1):
+        if flag[i-1] == 0 and flag[i+1] == 0:
+            flag[i] = 0
+
+
+    count_linear = 0
+    times = []
+    for i in range(len(flag)-1):
+        if flag[i] > 0:
+            count_linear += 1
+            if flag[i+1] == 0:
+                end = i
+                start = end - count_linear
+                # print("linear 1:",count_linear,"start end :",start,end)
+                if count_linear >= 10:
+                    times.append([start,end])
+                count_linear = 0
+
+    print("select times:",times)
+    # print("corr max and id",corr_N_max,corr_N_max_id)
+    # print(corr_N.shape)
+    # plt.plot(flag,'w')
+    # plt.imshow(data_n)
+    # plt.colorbar()
+    # plt.show()
+    return times
 
 
 if __name__ == '__main__':
