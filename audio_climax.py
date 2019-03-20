@@ -71,12 +71,12 @@ def determine_audio(data,fs):
                 data_n[i][j] = corr_N[i][j]
                 flag[j] = 5
 
-    # If you're greater than 0 on both sides, you take the middle out
+    # If you're greater than 0 on both sides, Let's take the median to be greater than 0
     for i in range(1,len(flag)-1):
         if flag[i-1] > 0 and flag[i+1] > 0:
             flag[i] = flag[i-1]
 
-    # Let's get rid of the 0's on both sides
+    # It's less than 0 on both sides, 0 in the middle
     for i in range(1,len(flag)-1):
         if flag[i-1] == 0 and flag[i+1] == 0:
             flag[i] = 0
